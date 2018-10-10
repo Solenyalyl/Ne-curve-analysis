@@ -4,12 +4,13 @@
 
 '''
 this project have two functions,
-many psmc demographic trajectory results to predict their pattern or
-one psmc demographic trajectory to find their pattern by compare with already exist data
+1. using psmc Ne curves to predict their extrema clusters
+2. one Ne curve to find its pattern by compare with already existing clusters
+usage:
+python Ne_curve_analysis.py -a [cluster/predict] -c confidence interval <your Ne curves>
 '''
 
 
-#this project is used to cluster through crest and trough
 import sys,re
 import getopt
 import numpy as np
@@ -98,7 +99,7 @@ def crest_trough(d_broken_lines):
 	return d_broken_lines
 
 
-#Hopkins statistic
+#Hopkins statistic analysis
 def hopkins_statistic(d_crest_trough):
 	a_time = []
 	for key in d_crest_trough.keys():
@@ -158,7 +159,7 @@ def Kmeans(d_crest_trough):
 	for key in results.keys():
 		results[key] = sum(results[key])/len(results[key])
 	
-	#reserve model
+	#reserve kmeans cluster model
 	joblib.dump(kmeans,'mammals.pkl')
 	return silhouette_avg, results, a_point, labels, a_time, a_species, cluster_centers
 
@@ -168,7 +169,7 @@ def predict(d_crest_trough):
 	a_time = []
 	for key in d_crest_trough.keys():
 		for i in range(len(d_crest_trough[key])):
-			if d_crest_trough[key][i][0] > 1100000:
+			if d_crest_trough[key][i][0] > 1047000:
 				continue
 			else:
 				a_time.append([d_crest_trough[key][i][0]])
@@ -183,64 +184,91 @@ def predict(d_crest_trough):
 
 	return clusters
 
+
+
 #running part
-def final_model(analysis_type, arg):
+def final_model_for_cluster(Z, analysis_type, arg):
 	d_broken_lines = read_files(arg)
 	d_crest_trough = crest_trough(d_broken_lines)
 
-	if analysis_type == 'pattern':
-		h_s = hopkins_statistic(d_crest_trough)
-		silhouette_avg, cluster_silhouette_avg, a_point, labels, a_time, a_species, cluster_centers = Kmeans(d_crest_trough)
+	h_s = hopkins_statistic(d_crest_trough)
+	silhouette_avg, cluster_silhouette_avg, a_point, labels, a_time, a_species, cluster_centers = Kmeans(d_crest_trough)
 		
 
-		#print("hopkins statistics is %s"%h_s)
-		#print("average silhouette coefficient is %s"%silhouette_avg)
-		#print("clusters average silhouette coefficient:")
-		#for key in cluster_silhouette_avg.keys():
-		#	print("%d: %s"%(key, cluster_silhouette_avg[key]))
-
-		clusters = {}
-		species_trough = {}
-		species_crest = {}
-		species = {}
-		for i in range(0, 7):
-			for j in range(len(labels)):
-				if i == labels[j]:
-					clusters.setdefault(i, []).append(a_point[j])
-					species.setdefault(i, []).append(a_species[j])
-					if a_point[j][1] == 2:
-						species_trough.setdefault(i, []).append(a_species[j])
-					if a_point[j][1] == -2:
-						species_crest.setdefault(i, []).append(a_species[j])
-
-		for key in clusters.keys():
-			crest = 0
-			trough = 0
-			for i in clusters[key]:
-				if i[1] == 2:
-					trough +=1
-				elif i[1] == -2:
-					crest +=1
-			#print("%d: trough,%d crest,%d"%(cluster_centers[key][0], trough, crest))
-			print("%d"%cluster_centers[key][0])
-			for i in range(len(clusters[key])):
-				print(clusters[key][i][0], end = "\t")
-			print("\n")
-			#print(species[key]) 
-			#print("crest:", "\n", species_crest[key])
-			#print("trough:", "\n", species_trough[key])
+	print("hopkins statistics is %s"%h_s)
+	print("average silhouette coefficient is %s"%silhouette_avg)
+	print("clusters average silhouette coefficient:")
+	for key in cluster_silhouette_avg.keys():
+		print("%d: %s"%(key, cluster_silhouette_avg[key]))
+	print("\n")
 
 
+	clusters = {}
+	species_trough = {}
+	species_crest = {}
+	species = {}
+	for i in range(0, 7):
+		for j in range(len(labels)):
+			if i == labels[j]:
+				clusters.setdefault(i, []).append(a_point[j])
+				species.setdefault(i, []).append(a_species[j])
+				if a_point[j][1] == 2:
+					species_trough.setdefault(i, []).append(a_species[j])
+				if a_point[j][1] == -2:
+					species_crest.setdefault(i, []).append(a_species[j])
+	print("extrema clusters:\n")
+	for key in clusters.keys():
+		crest = 0
+		trough = 0
+		for i in clusters[key]:
+			if i[1] == 2:
+				trough +=1
+			elif i[1] == -2:
+				crest +=1
+		print("%d:"%(cluster_centers[key][0]))
 
-	elif analysis_type == 'predict':
-		clusters = predict(d_crest_trough)
-		for i in range(len(clusters)):
-			print("cluster center: %d"%clusters[i][0])
-	else:
-		print("python dtw_fluctuation.py -a pattern data or python dtw_fluctuation.py -a predict data")
+			
+		###cluster center confidence intervel###
+		cluster_for_c_i = np.array(clusters[key])
+		cluster_mean = np.mean(cluster_for_c_i, axis = 0)[0]
+		cluster_std = Z * np.std(cluster_for_c_i, axis = 0)[0]/math.sqrt(len(cluster_for_c_i))
+		confidence_intervel = [cluster_mean-cluster_std, cluster_mean+cluster_std]
+		print("confidence interval:", confidence_intervel)
+
+		print("trough: %d, crest: %d"%(trough, crest))
+
+		for i in range(len(clusters[key])):
+			print("%d:%d"%(clusters[key][i][0], clusters[key][i][1]), end = " ")
+		print(", ".join(species[key]))
+		print("\n")
+
+def final_model_for_predict(analysis_type, arg):
+	d_broken_lines = read_files(arg)
+	d_crest_trough = crest_trough(d_broken_lines)
+	clusters = predict(d_crest_trough)
+	for i in range(len(clusters)):
+		print("cluster center: %d"%clusters[i][0])
 
 if __name__ == '__main__':
-	opt, arg = getopt.getopt(sys.argv[1:], "a:", ["analysis_type"])
-	analysis_type = opt[0][1]
+	opt, arg = getopt.getopt(sys.argv[1:], "a:c:", ["analysis_type", "confidence"])# "cluster" or "predict"
 
-	final_model(analysis_type, arg)
+	analysis_type = opt[0][1]
+	if analysis_type == 'cluster':
+		confidence = opt[1][1]
+		print(analysis_type)
+		print(confidence)
+		confidence_rate = {
+			'0.8' : 1.282,
+			'0.85' : 1.440,
+			'0.9' : 1.645,
+			'0.95' : 1.960,
+			'0.99' : 2.576,
+			'0.995' : 2.807,
+			'0.999' : 3.291
+		}
+		Z = confidence_rate[confidence]
+		final_model_for_cluster(Z, analysis_type, arg)
+	elif analysis_type == 'predict':
+		final_model_for_predict(analysis_type, arg)
+	else:
+		print("python Ne_curve_analysis.py -a [cluster/predict] -c confidence interval <your Ne curves>")
