@@ -8,5 +8,6 @@
 ### pip install pandas
 ### pip install random
 # Usage
+### download the implemention and run:
 ### python Ne_curve_analysis.py -a [cluster/predict] -c confidence interval <your Ne curves>
 
