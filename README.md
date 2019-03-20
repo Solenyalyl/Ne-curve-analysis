@@ -3,7 +3,10 @@
 # Prerequisites
 ### You need Python3.6 to run Ne-curve-analysis
 ## install necessary python packages via pip
-### 
+### pip install matplotlib
+### pip install sklearn
+### pip install pandas
+### pip install random
 # Usage
 ### python Ne_curve_analysis.py -a [cluster/predict] -c confidence interval <your Ne curves>
 
