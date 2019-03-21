@@ -2,6 +2,10 @@
 The codes are used to cluster the turning point of Ne curves, and predict the turning point of a new Ne curve belongs to which cluster
 # Prerequisites
 Python 3.6
+matplotlib
+sklearn
+pandas
+random
 # Install
 pip install matplotlib
 
